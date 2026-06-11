@@ -1,0 +1,20 @@
+{
+  "name": "Stars & Sorcery Companion",
+  "short_name": "S&S Companion",
+  "description": "Hoja de personaje digital para Stars & Sorcery RPG. Gestiona estadísticas, inventario, talentos y tiradas de dados.",
+  "lang": "es",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#07060a",
+  "theme_color": "#07060a",
+  "icons": [
+    {
+      "src": "Bind_Pact_Weapon.webp",
+      "sizes": "any",
+      "type": "image/webp",
+      "purpose": "any"
+    }
+  ]
+}

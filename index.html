@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="es" style="background:#07060a;color-scheme:dark">
+<head>
+<meta charset="UTF-8">
+<!-- CRITICAL: this inline style fires before any stylesheet and kills the iOS white flash -->
+<style>html,body{background:#07060a!important}*{box-sizing:border-box}</style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#07060a">
+<meta name="background-color" content="#07060a">
+<title>S&amp;S Companion</title>
+<meta name="description" content="Hoja de personaje digital para Stars &amp; Sorcery RPG. Gestiona estadísticas, inventario, talentos y tiradas de dados.">
+<link rel="icon" type="image/webp" href="Bind_Pact_Weapon.webp">
+<link rel="apple-touch-icon" href="Bind_Pact_Weapon.webp">
+<link rel="manifest" href="manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="S&amp;S Companion">
+<meta name="application-name" content="S&amp;S Companion">
+<meta name="msapplication-TileColor" content="#07060a">
+<meta name="color-scheme" content="dark">
+<link rel="stylesheet" href="css/main.css">
+<!-- Fonts injected via JS so they never block window.load or app init.
+     OFFLINE/SELF-HOST: to guarantee the display fonts work with no connection,
+     download the .woff2 files for Cinzel, Cinzel Decorative, Spectral and
+     JetBrains Mono, place them next to this file, add @font-face rules, and
+     cache them in sw.js. Until then, the CSS fallback stacks above keep the
+     serif/display character intact offline. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<script>
+(function(){
+  const l = document.createElement('link');
+  l.rel = 'stylesheet';
+  l.media = 'print';
+  l.onload = function(){ this.media = 'all'; };
+  l.href = 'https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=Cinzel:wght@400;600;700&family=Spectral:ital,wght@0,300;0,400;0,600;1,300;1,400&family=JetBrains+Mono:wght@400;600&display=swap';
+  document.head.appendChild(l);
+})();
+</script>
+</head>
+<body>
+<div id="ss-loader" aria-hidden="true">
+
+  <!-- Floating particles -->
+  <div class="loader-particles" aria-hidden="true">
+    <div class="lp"></div><div class="lp"></div><div class="lp"></div>
+    <div class="lp"></div><div class="lp"></div><div class="lp"></div>
+    <div class="lp"></div><div class="lp"></div>
+  </div>
+
+  <!-- Rune ring -->
+  <div class="loader-ring-wrap">
+    <div class="loader-ring"></div>
+    <div class="loader-ring-outer"></div>
+    <div class="loader-ring-inner"></div>
+    <div class="loader-arc"></div>
+    <div class="loader-arc-trail"></div>
+    <div class="loader-glyph">✦</div>
+  </div>
+
+  <!-- Text -->
+  <div class="loader-text">
+    <div class="loader-title">Stars &amp; Sorcery</div>
+    <div class="loader-deco"></div>
+    <div class="loader-sub">Companion</div>
+    <div class="loader-status">Cargando…</div>
+  </div>
+
+</div>
+<div id="toast-ct" role="status" aria-live="polite" aria-atomic="false"></div>
+<div id="toast-ct-err" role="alert" aria-live="assertive" aria-atomic="true"></div>
+<div id="dice-overlay">
+  <div class="dice-backdrop" id="dice-backdrop" data-action="closeDiceOverlay"></div>
+  <div class="dice-card" id="dice-card">
+    <div class="dice-label" id="dice-label">Tirada</div>
+    <div class="dice-faces-row" id="dice-faces-row">
+      <!-- Populated dynamically by showDiceRoll() -->
+    </div>
+    <div class="dice-deco-line"></div>
+    <div class="dice-detail" id="dice-detail"></div>
+    <div class="dice-total-row" id="dice-total-row">
+      <span class="dice-total" id="dice-total">—</span>
+    </div>
+    <span class="dice-badge" id="dice-badge" style="display:none"></span>
+    <button class="dice-close-btn" id="dice-close-btn" data-action="closeDiceOverlay" aria-label="Cerrar resultado de dados">✕ Cerrar</button>
+    <div style="font-family:var(--fm);font-size:.5rem;color:var(--border);letter-spacing:.08em;margin-top:2px">↓ desliza para cerrar</div>
+  </div>
+</div>
+<input type="file" id="img_input" accept="image/*" style="display:none" onchange="app.startCrop(this)">
+<div id="apt_panel" class="fs-panel" role="region" aria-label="Gestor de aptitudes">
+  <div class="fs-hdr">
+    <button class="fs-hdr-back" data-action="closeAptManager" aria-label="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="fs-hdr-center">
+      <span class="fs-hdr-ttl" id="apt_manager_title">Gestor de Trucos</span>
+      <span class="fs-hdr-sub" id="apt_manager_sub">Selecciona los trucos del personaje</span>
+    </div>
+    <div class="fs-hdr-actions">
+      <span id="apt_modal_icon" style="font-size:1.1rem;color:var(--gold)">✦</span>
+    </div>
+  </div>
+
+  <div class="fs-body">
+    <div class="apt-layout">
+      <!-- LEFT: Available -->
+      <div class="apt-col">
+        <div class="apt-col-hdr">
+          <span class="apt-col-title">Disponibles</span>
+        </div>
+        <div class="apt-search-wrap">
+          <input class="apt-search" id="apt_search" type="search"
+            placeholder="Buscar…" autocomplete="off" spellcheck="false"
+            oninput="app._aptFilter(this.value)">
+        </div>
+        <div class="apt-col-body" id="apt_available_list"></div>
+      </div>
+      <!-- RIGHT: Selected -->
+      <div class="apt-col">
+        <div class="apt-col-hdr">
+          <div style="display:flex;align-items:center;gap:7px">
+            <span class="apt-col-title active-col">Seleccionados</span>
+            <span class="mft-count" id="apt_sel_count">0</span>
+          </div>
+          <button class="bmini br" style="font-size:.56rem;padding:3px 8px;min-height:30px"
+            data-action="_aptClearAll">✕ Limpiar</button>
+        </div>
+        <div class="apt-col-body" id="apt_selected_list">
+          <p id="apt_selected_empty" style="display:none;text-align:center;color:var(--muted);
+            font-style:italic;font-size:.72rem;margin-top:20px;line-height:1.8;padding:0 12px">
+            Sin selección.<br>
+            <span style="font-size:.62rem;color:var(--border)">Toca un ítem para añadir.</span>
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="fs-footer">
+    <div class="fs-footer-info">
+      <span id="apt_type_label" style="color:var(--muted)">—</span>
+    </div>
+    <button class="btn btn-gold" data-action="closeAptManager">✓ Confirmar</button>
+  </div>
+</div>
+<input type="file" id="bg_home_input" accept="image/*" style="display:none" onchange="app.loadBgImage('home',this)">
+<input type="file" id="bg_app_input"  accept="image/*" style="display:none" onchange="app.loadBgImage('app',this)">
+<input type="file" id="json_char_input" accept=".json" style="display:none" onchange="app.loadJSON(this)">
+<input type="file" id="json_rules_input" accept=".json" style="display:none" onchange="app.loadRulesFile(this)">
+<div id="home-screen" class="screen" role="main">
+  <!-- ── Header: title + deco (identidad visual preservada) ── -->
+  <div class="home-hdr">
+    <h1 class="home-title">Stars &amp; Sorcery</h1>
+    <p class="home-sub">Companion</p>
+    <div class="home-deco"></div>
+  </div>
+
+  <!-- ── Body ── -->
+  <div class="home-body">
+
+    <!-- Primary actions -->
+    <div class="home-actions-primary">
+      <button class="home-btn-new" data-action="newChar" aria-label="Crear nuevo personaje">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nuevo Personaje
+      </button>
+      <button class="home-btn-import" onclick="app.toast('Selecciona un archivo .json de personaje','info');setTimeout(()=>document.getElementById('json_char_input').click(),80)" aria-label="Importar personaje JSON">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Importar
+      </button>
+    </div>
+
+    <!-- Settings button -->
+    <button class="home-settings-btn" onclick="app.openSettings()" aria-label="Abrir ajustes y datos">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      Ajustes &amp; Datos
+    </button>
+
+    <!-- Roster -->
+    <div class="home-roster-wrap">
+      <div class="home-roster-hdr">
+        <span class="home-roster-title">Personajes</span>
+        <span class="home-roster-hint">← desliza para eliminar</span>
+      </div>
+      <div class="home-roster-body">
+        <div id="home-roster"></div>
+      </div>
+    </div>
+
+    <!-- Footer tools -->
+    <div class="home-footer">
+      <button class="home-footer-btn" onclick="app.toast('Selecciona un archivo .json de reglas','info');setTimeout(()=>document.getElementById('json_rules_input').click(),80)" aria-label="Importar reglas">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Importar Reglas
+      </button>
+      <div class="home-footer-sep"></div>
+      <button class="home-footer-btn" data-action="openDatabaseEditor" aria-label="Editor de base de datos">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        Editor de Reglas
+      </button>
+    </div>
+
+  </div>
+</div>
+<div id="app-screen" class="screen hidden">
+  <div class="app-shell" role="main">
+    <header class="app-hdr">
+      <button class="app-hdr-back" data-action="goHome" title="Volver" aria-label="Volver al inicio"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+      <div style="flex:1;text-align:center;min-width:0">
+        <span class="app-hdr-ttl">Stars &amp; Sorcery</span>
+        <div class="last-saved" id="last_saved_lbl"></div>
+      </div>
+      <button class="app-hdr-save" data-action="saveChar" aria-label="Guardar personaje" title="Guardar">Guardar</button>
+      <div class="sdial" id="sdial">
+        <button class="sdial-btn" data-action="toggleDial" title="Acciones" aria-label="Abrir menú de acciones" aria-expanded="false" id="sdial_btn"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+        <div class="sdial-menu" id="sdial_menu">
+          <button class="sdial-item" onclick="app.randomize();app.toggleDial()" title="Personaje aleatorio" aria-label="Generar personaje aleatorio"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="4"/><circle cx="8" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="8" r="1.2" fill="currentColor" stroke="none"/><circle cx="8" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="16" cy="16" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/></svg></button>
+          <button class="sdial-item sdial-danger" onclick="app.confirmClear();app.toggleDial()" title="Resetear hoja" aria-label="Resetear hoja de personaje"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg></button>
+          <button class="sdial-item sdial-danger" onclick="app.deleteCurrentChar();app.toggleDial()" title="Eliminar personaje" aria-label="Eliminar personaje guardado"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>
+          <button class="sdial-item" onclick="app.openSettings();app.toggleDial()" title="Ajustes y datos" aria-label="Abrir ajustes y datos"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        </div>
+      </div>
+    </header>
+
+    <div class="pages-wrapper" id="pages_wrapper">
+      <div class="pages-track" id="pages_track">
+        <div class="page" id="page_0">
+
+          <!-- Retrato + Datos personales -->
+          <div class="panel panel-accent" style="padding:0">
+            <!-- EDIT MODE -->
+            <div id="personal_edit_view">
+              <div style="padding:14px 16px 0;display:flex;justify-content:center">
+                <div class="port-card-edit" onclick="document.getElementById('img_input').click()" role="button" tabindex="0" aria-label="Cambiar retrato del personaje" onkeydown="if(event.key==='Enter'||event.key===' ')document.getElementById('img_input').click()">
+                  <img id="char_img" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='%23382f47'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E" alt="Retrato">
+                  <div class="port-hint"><span>Cambiar Retrato</span></div>
+                </div>
+              </div>
+              <div style="padding:10px 12px">
+                <div style="margin-bottom:6px"><span class="fl">Nombre</span><input type="text" id="char_name" placeholder="ej. Valerius el Audaz" style="font-family:var(--fd);font-size:.92rem;font-weight:600" autocomplete="off" spellcheck="false"></div>
+                <div class="g2" style="gap:5px;margin-bottom:6px">
+                  <div><span class="fl">Nivel</span><input type="number" id="char_lvl" value="1" min="1" max="10" onchange="app.calc();app.updateXpHint()" inputmode="numeric" aria-label="Nivel del personaje"></div>
+                  <div><span class="fl">XP <span id="xp_next_lbl" style="font-size:.58rem;color:var(--muted);font-style:normal;letter-spacing:0;text-transform:none"></span></span><input type="number" id="char_xp" value="0" min="0" oninput="app.updateXpHint()" inputmode="numeric" aria-label="Puntos de experiencia"></div>
+                </div>
+                <div id="xp_bar_wrap" style="margin-bottom:6px;display:none">
+                  <div class="lbar" style="margin-top:0"><div id="xp_bar_fill" class="lfill" style="background:linear-gradient(90deg,var(--ice),var(--gold))"></div></div>
+                </div>
+                <div style="margin-bottom:6px">
+                  <span class="fl">Alineamiento</span>
+                  <div class="asel" id="align_sel"></div>
+                  <div id="align_feedback" style="min-height:1.4em;margin-top:5px;font-family:var(--fd);font-size:.62rem;color:var(--gold);letter-spacing:.06em;display:flex;align-items:center;gap:5px;padding:0 2px;opacity:0;transition:opacity .2s">
+                    <span style="font-size:.55rem;color:var(--goldb)">✦</span>
+                    <span id="align_feedback_txt"></span>
+                  </div>
+                </div>
+                <div style="margin-bottom:4px"><span class="fl">Biografía</span><textarea id="char_concept" placeholder="Bio del personaje…" style="min-height:44px;font-size:.8rem"></textarea></div>
+                <button class="bcnf" data-action="confirmPersonal">✓ Confirmar</button>
+              </div>
+            </div>
+            <!-- SUMMARY MODE -->
+            <div id="personal_summary_view" style="display:none;padding:14px 16px 10px">
+              <div style="display:flex;flex-direction:column;align-items:center">
+                <div class="port-card">
+                  <img id="char_img_summary" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 24 24' fill='%23382f47'%3E%3Cpath d='M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c1.66 0 3 1.34 3 3s-1.34 3-3 3-3-1.34-3-3 1.34-3 3-3zm0 14.2c-2.5 0-4.71-1.28-6-3.22.03-1.99 4-3.08 6-3.08 1.99 0 5.97 1.09 6 3.08-1.29 1.94-3.5 3.22-6 3.22z'/%3E%3C/svg%3E" alt="Retrato">
+                </div>
+                <div class="port-identity">
+                  <div class="port-name" id="sum_name_ov">—</div>
+                  <div class="port-divider"></div>
+                  <div class="port-lvl" id="sum_lvl_ov">Nivel 1</div>
+                </div>
+              </div>
+              <div style="padding:6px 4px 10px;text-align:center">
+                <div id="sum_align_ov" class="u-fm u-muted" style="font-size:.64rem;margin-bottom:5px"></div>
+                <div id="sum_bio_ov" class="u-pre-wrap" style="font-size:.8rem;font-style:italic;color:var(--text);margin-bottom:4px"></div>
+                <button class="bedit" onclick="app.editSection('personal')">✏ Editar</button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Identidad & Origen -->
+          <div class="panel">
+            <div class="ph identity-edit-header"><span class="pt">Identidad &amp; Origen</span></div>
+            <div id="identity_edit_view">
+              <div class="g2">
+                <div><span class="fl">Linaje (Raza)</span><select id="sel_desc" aria-label="Linaje del personaje" onchange="app.updateOptions()"></select><div id="desc_info" class="infobox"></div></div>
+                <div><span class="fl">Arquetipo (Clase)</span><select id="sel_arq" aria-label="Arquetipo del personaje" onchange="app.updateOptions()"></select><div id="arq_info" class="infobox"></div><span class="fl" style="margin-top:6px">Filo</span><select id="sel_filo" aria-label="Filo del arquetipo" onchange="app.calc()"></select></div>
+              </div>
+              <div style="margin-top:6px"><span class="fl">Trasfondo</span><select id="sel_bg" aria-label="Trasfondo del personaje" onchange="app.updateOptions()"></select><div id="bg_info" class="infobox"></div></div>
+              <button class="bcnf" onclick="app.confirmSection('identity')">✓ Confirmar</button>
+            </div>
+            <div id="identity_summary_view" style="display:none">
+              <div style="display:flex;flex-wrap:wrap;gap:2px;justify-content:center;padding:4px 0">
+                <span class="ibadge" id="sum_desc_badge">—</span><span style="color:var(--muted);align-self:center">·</span>
+                <span class="ibadge" id="sum_arq_badge">—</span><span style="color:var(--muted);align-self:center">·</span>
+                <span class="ibadge" id="sum_bg_badge">—</span>
+              </div>
+              <button class="bedit" onclick="app.editSection('identity')">✏ Editar</button>
+            </div>
+          </div>
+
+          <!-- Estado -->
+          <div class="panel" style="padding:8px">
+            <div class="ph" style="margin-bottom:7px"><span class="pt">Estado</span></div>
+            <!-- Reservas principales -->
+            <div class="g3c mb5" style="gap:5px">
+              <div class="res-box res-box-pv">
+                <div class="res-lbl res-lbl-pv">PV</div>
+                <div class="res-ctrl res-ctrl-pv">
+                  <button class="res-btn res-btn-pv" data-cur="cur_pv" data-max="max_pv" data-delta="-1" onclick="app.adjustRes('cur_pv','max_pv',-1)" aria-label="Reducir puntos de vida"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                  <input type="text" inputmode="numeric" id="cur_pv" value="0" class="fin res-fin" aria-label="Puntos de vida actuales">
+                  <button class="res-btn res-btn-pv" data-cur="cur_pv" data-max="max_pv" data-delta="1" onclick="app.adjustRes('cur_pv','max_pv',1)" aria-label="Aumentar puntos de vida"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="8"/><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                </div>
+                <div class="res-max res-max-pv">/ <span id="max_pv">0</span></div>
+              </div>
+              <div class="res-box res-box-adr">
+                <div class="res-lbl res-lbl-adr">Adrenalina</div>
+                <div class="res-ctrl res-ctrl-adr">
+                  <button class="res-btn res-btn-adr" data-cur="cur_adr" data-max="max_adr" data-delta="-1" onclick="app.adjustRes('cur_adr','max_adr',-1)" aria-label="Reducir adrenalina"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                  <input type="text" inputmode="numeric" id="cur_adr" value="0" class="fin res-fin" aria-label="Adrenalina actual">
+                  <button class="res-btn res-btn-adr" data-cur="cur_adr" data-max="max_adr" data-delta="1" onclick="app.adjustRes('cur_adr','max_adr',1)" aria-label="Aumentar adrenalina"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="8"/><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                </div>
+                <div class="res-max res-max-adr">/ <span id="max_adr">0</span></div>
+              </div>
+              <div class="res-box res-box-ing">
+                <div class="res-lbl res-lbl-ing">Ingenio</div>
+                <div class="res-ctrl res-ctrl-ing">
+                  <button class="res-btn res-btn-ing" data-cur="cur_ing" data-max="max_ing" data-delta="-1" onclick="app.adjustRes('cur_ing','max_ing',-1)" aria-label="Reducir ingenio"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                  <input type="text" inputmode="numeric" id="cur_ing" value="0" class="fin res-fin" aria-label="Ingenio actual">
+                  <button class="res-btn res-btn-ing" data-cur="cur_ing" data-max="max_ing" data-delta="1" onclick="app.adjustRes('cur_ing','max_ing',1)" aria-label="Aumentar ingenio"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="8"/><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                </div>
+                <div class="res-max res-max-ing">/ <span id="max_ing">0</span></div>
+              </div>
+            </div>
+            <!-- Stats secundarios row 1 -->
+            <div class="g3c mb4">
+              <div class="sc">
+                <div class="sc-lbl" style="color:var(--gold)">CA</div>
+                <div style="font-family:var(--fd);font-size:.95rem;color:var(--gold);font-weight:700"><span id="res_ca">10</span></div>
+                <div style="font-family:var(--fm);font-size:.42rem;color:var(--muted);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" id="res_ca_armor">—</div>
+              </div>
+              <div class="sc-clickable" onclick="app.rollCheck('Iniciativa', parseInt(document.getElementById('res_ini').textContent) || 0)">
+                <div class="sc-lbl" style="color:var(--muted)">Ini</div>
+                <div style="font-family:var(--fd);font-size:.95rem;color:var(--bright);font-weight:700"><span id="res_ini">+0</span></div>
+              </div>
+              <div class="sc">
+                <div class="sc-lbl" style="color:var(--muted)">Vel</div>
+                <div style="font-family:var(--fm);font-size:.82rem;color:var(--bright);font-weight:600"><span id="res_vel">30 pies</span></div>
+              </div>
+            </div>
+            <!-- Stats secundarios row 2 -->
+            <div class="g3c mb5">
+              <div class="sc" style="padding:4px 3px">
+                <div class="sc-lbl" style="color:#a0683a">Carne</div>
+                <div style="display:flex;align-items:center;justify-content:center;gap:3px;font-family:var(--fm);font-weight:600;font-size:.92rem;">
+                  <button class="res-btn res-btn-carne" data-cur="cur_carne" data-max="res_carne" data-delta="-1" onclick="app.adjustRes('cur_carne','res_carne',-1)" aria-label="Reducir daño de carne"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                  <input type="text" inputmode="numeric" id="cur_carne" value="0" class="fin" style="color:var(--bright);width:5ch;max-width:5ch;text-align:center;font-size:.88rem">
+                  <button class="res-btn res-btn-carne" data-cur="cur_carne" data-max="res_carne" data-delta="1" onclick="app.adjustRes('cur_carne','res_carne',1)" aria-label="Aumentar daño de carne"><svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="2" x2="5" y2="8"/><line x1="2" y1="5" x2="8" y2="5"/></svg></button>
+                </div>
+                <div style="font-family:var(--fm);font-size:.58rem;color:rgba(160,104,58,.8);margin-top:1px">/ <span id="res_carne">0</span></div>
+              </div>
+              <div class="sc">
+                <div class="sc-lbl" style="color:var(--gold)">Comp</div>
+                <div style="font-family:var(--fd);font-size:.92rem;color:var(--gold);font-weight:700"><span id="res_prof">+2</span></div>
+              </div>
+              <div class="sc">
+                <div class="sc-lbl" style="color:var(--muted)">Filo</div>
+                <div style="font-family:var(--fd);font-size:.82rem;color:var(--bright);font-weight:600"><span id="res_filo_val">—</span></div>
+              </div>
+            </div>
+            <!-- Encumbramiento -->
+            <div>
+              <div style="display:flex;justify-content:space-between;align-items:center;font-family:var(--fd);font-size:.53rem;text-transform:uppercase;letter-spacing:.1em;color:var(--dim)">
+                <span>Encumbramiento</span><span id="res_carga" style="color:var(--text);font-family:var(--fm);font-size:.7rem">0/0</span>
+              </div>
+              <div class="lbar"><div id="carga_bar" class="lfill"></div></div>
+              <p id="carga_warn" style="display:none;color:var(--ember);font-size:.6rem;text-align:center;margin-top:2px;font-family:var(--fm)">⚠ SOBRECARGADO</p>
+            </div>
+            <details style="margin-top:6px"><summary id="notes-summary">Notas Rápidas</summary><textarea id="char_notes" aria-label="Notas rápidas del personaje" aria-labelledby="notes-summary" style="min-height:52px;margin-top:4px;font-size:.8rem" placeholder="Notas…"></textarea></details>
+          </div>
+
+          <!-- Ataques rápidos -->
+          <div class="panel">
+            <div class="ph" style="margin-bottom:4px"><span class="pt">Ataques</span><span style="font-family:var(--fm);font-size:.58rem;color:var(--muted);margin-left:auto">desde equipo</span></div>
+            <div class="atk-card">
+              <div class="atk-hdr">
+                <span class="atk-nm" id="atk_name_1">Desarmado</span>
+                <span class="atk-role-badge">Principal</span>
+              </div>
+              <div class="atk-btns">
+                <button class="abtn abtn-a" onclick="app.rollWeaponAtk(1)" aria-label="Tirar ataque arma principal">
+                  <span class="abtn-icon">ATK</span>
+                  <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="atk_bonus_1">+0</span></span>
+                </button>
+                <div class="atk-btn-sep"></div>
+                <button class="abtn abtn-d" onclick="app.rollWeaponDmg(1)" aria-label="Tirar daño arma principal">
+                  <span class="abtn-icon">DMG</span>
+                  <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="atk_dmg_1">1</span></span>
+                </button>
+              </div>
+            </div>
+            <div class="atk-card secondary">
+              <div class="atk-hdr">
+                <span class="atk-nm" id="atk_name_2">Desarmado</span>
+                <span class="atk-role-badge">Secundaria</span>
+              </div>
+              <div class="atk-btns">
+                <button class="abtn abtn-a" onclick="app.rollWeaponAtk(2)" aria-label="Tirar ataque arma secundaria">
+                  <span class="abtn-icon">ATK</span>
+                  <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="atk_bonus_2">+0</span></span>
+                </button>
+                <div class="atk-btn-sep"></div>
+                <button class="abtn abtn-d" onclick="app.rollWeaponDmg(2)" aria-label="Tirar daño arma secundaria">
+                  <span class="abtn-icon">DMG</span>
+                  <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="atk_dmg_2">1</span></span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+        </div><!-- /page 0 -->
+        <div class="page" id="page_1">
+          <div class="panel">
+            <div class="ph"><span class="pt">Los Seis Pilares</span></div>
+            <div id="stats_edit_view">
+              <div class="g6" style="margin-bottom:8px">
+                <div><span class="fl">FUE</span><input type="number" id="base_FUE" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="FUE"></div>
+                <div><span class="fl">DES</span><input type="number" id="base_DES" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="DES"></div>
+                <div><span class="fl">CON</span><input type="number" id="base_CON" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="CON"></div>
+                <div><span class="fl">INT</span><input type="number" id="base_INT" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="INT"></div>
+                <div><span class="fl">SAB</span><input type="number" id="base_SAB" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="SAB"></div>
+                <div><span class="fl">CAR</span><input type="number" id="base_CAR" value="8" min="3" max="18" onchange="app.calc()" class="stat-in" inputmode="numeric" aria-label="CAR"></div>
+              </div>
+              <div id="stats_boxes_display" class="g6" style="margin-top:4px"></div>
+              <button class="bcnf" onclick="app.confirmSection('stats')">✓ Confirmar</button>
+            </div>
+            <div id="stats_summary_view" style="display:none">
+              <div id="stats_summary_boxes" class="g6"></div>
+              <button class="bedit" onclick="app.editSection('stats')">✏ Editar</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><span class="pt">Tiradas de Salvación</span></div>
+            <div id="saves_edit_view">
+              <div class="g2">
+                <div>
+                  <h3 class="sub" style="font-size:.72rem">Comunes</h3>
+                  <label class="skill-opt"><input type="radio" name="save_common" value="DES" onchange="app.calc()"> Destreza</label>
+                  <label class="skill-opt"><input type="radio" name="save_common" value="CON" onchange="app.calc()"> Constitución</label>
+                  <label class="skill-opt"><input type="radio" name="save_common" value="SAB" onchange="app.calc()"> Sabiduría</label>
+                </div>
+                <div>
+                  <h3 class="sub" style="font-size:.72rem">Infrecuentes</h3>
+                  <label class="skill-opt"><input type="radio" name="save_uncommon" value="FUE" onchange="app.calc()"> Fuerza</label>
+                  <label class="skill-opt"><input type="radio" name="save_uncommon" value="INT" onchange="app.calc()"> Inteligencia</label>
+                  <label class="skill-opt"><input type="radio" name="save_uncommon" value="CAR" onchange="app.calc()"> Carisma</label>
+                </div>
+              </div>
+              <div id="saves_display" class="saves-grid"></div>
+              <button class="bcnf" onclick="app.confirmSection('saves')">✓ Confirmar</button>
+            </div>
+            <div id="saves_summary_view" style="display:none">
+              <div id="saves_summary_text" class="saves-grid" style="margin-top:0;border-top:none;padding-top:0"></div>
+              <button class="bedit" onclick="app.editSection('saves')">✏ Editar</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><span class="pt">Rasgos</span><span style="font-family:var(--fm);font-size:.58rem;color:var(--muted);margin-left:auto">por linaje &amp; origen</span></div>
+            <div id="traits_list" style="display:flex;flex-wrap:wrap;gap:3px;padding:2px 0"></div>
+          </div>
+
+          <div class="panel">
+            <div class="ph">
+              <span class="pt">Talentos</span>
+              <div class="pill-badge">
+                <span id="talent_count_main" style="color:var(--gold);font-weight:700">0</span><span style="color:var(--rim)">/3</span>
+              </div>
+            </div>
+            <div style="text-align:center;margin-bottom:6px"><button class="btn btn-g" data-action="openTalentManager">Abrir Gestor de Talentos</button></div>
+            <div id="talents_summary_view" style="display:none"><div id="talents_summary_list" style="display:flex;flex-direction:column;gap:4px"></div></div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><span class="pt">Habilidades</span></div>
+            <div id="skills_edit_view">
+              <div class="g2">
+                <div><h3 class="sub">Por Arquetipo (Elige <span id="limit_arq">2</span>)</h3><div id="skills_arq" class="skill-area"></div></div>
+                <div><h3 class="sub">Por Trasfondo (Elige 2)</h3><div id="skills_bg" class="skill-area"></div></div>
+              </div>
+              <button class="bcnf" onclick="app.confirmSection('skills')">✓ Confirmar</button>
+            </div>
+            <div id="skills_summary_view" style="display:none;text-align:center">
+              <div id="final_skills_list" style="display:flex;flex-wrap:wrap;justify-content:center;gap:4px;padding:6px 0"></div>
+              <button class="bedit" onclick="app.editSection('skills')">✏ Editar</button>
+            </div>
+          </div>
+        </div><!-- /page 1 -->
+        <div class="page" id="page_2">
+          <!-- Trucos panel -->
+          <div class="panel">
+            <div class="ph">
+              <span class="pt">Trucos</span>
+              <div class="pill-badge">
+                <span id="tricks_count" style="color:var(--ice);font-weight:700">0</span>
+              </div>
+            </div>
+            <!-- Summary (default) -->
+            <div id="tricks_summary_view">
+              <div id="tricks_summary_list"><p class="txt-it-c">Sin trucos seleccionados.</p></div>
+              <div style="text-align:center;margin-top:8px">
+                <button class="btn btn-g" style="font-size:.7rem" onclick="app.openAptManager('tricks')">✎ Gestionar Trucos</button>
+              </div>
+            </div>
+          </div>
+          <!-- Conjuros panel -->
+          <div class="panel">
+            <div class="ph">
+              <span class="pt">Conjuros</span>
+              <div class="pill-badge">
+                <span id="spells_count" style="color:var(--ice);font-weight:700">0</span>
+              </div>
+            </div>
+            <!-- Summary (default) -->
+            <div id="spells_summary_view">
+              <div id="spells_summary_list"><p class="txt-it-c">Sin conjuros seleccionados.</p></div>
+              <div style="text-align:center;margin-top:8px">
+                <button class="btn btn-g" style="font-size:.7rem" onclick="app.openAptManager('spells')">✎ Gestionar Conjuros</button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /page 2 -->
+        <div class="page" id="page_3">
+          <div class="panel">
+            <div class="ph"><span class="pt">Equipo de Combate</span></div>
+            <div id="combat_edit_view">
+              <div class="g2">
+                <div><span class="fl">Armadura</span><select id="sel_armor" aria-label="Armadura equipada" onchange="app.calc()"></select>
+                  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-top:5px">
+                    <div><span class="fl" style="font-size:.55rem">Mod. CA Prim.</span><select id="ca_mod1" aria-label="Modificador de CA principal" class="ap" onchange="app.calc()"><option value="DES">DES</option><option value="FUE">FUE</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option><option value="NONE">—</option></select></div>
+                    <div><span class="fl" style="font-size:.55rem">Mod. Extra 1</span><select id="ca_mod2" aria-label="Modificador de CA extra 1" class="ap" onchange="app.calc()"><option value="NONE">—</option><option value="DES">DES</option><option value="FUE">FUE</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option></select></div>
+                    <div><span class="fl" style="font-size:.55rem">Mod. Extra 2</span><select id="ca_mod3" aria-label="Modificador de CA extra 2" class="ap" onchange="app.calc()"><option value="NONE">—</option><option value="DES">DES</option><option value="FUE">FUE</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option></select></div>
+                  </div>
+                  <div class="ccard"><span class="clbl">CA Base</span><span class="cval" id="armor_base_val">—</span></div>
+                  <div id="armor_desc" class="infobox"></div>
+                </div>
+                <div><span class="fl">Escudo</span><select id="sel_shield" aria-label="Escudo equipado" onchange="app.calc()"></select>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:5px">
+                    <div><span class="fl" style="font-size:.55rem">Bono Mágico</span><select id="sel_magic_bonus" class="ap" onchange="app.calc()"><option value="0">—</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option></select></div>
+                    <div><span class="fl" style="font-size:.55rem">Otro Bono</span><select id="sel_ca_other" class="ap" onchange="app.calc()"><option value="0">—</option><option value="1">+1</option><option value="2">+2</option><option value="3">+3</option></select></div>
+                  </div>
+                </div>
+              </div>
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:end;margin-top:8px">
+                <div><span class="fl">Arma Principal</span><select id="sel_weapon" aria-label="Arma principal" onchange="app.onWeaponChange('w1')"></select></div>
+                <div><span class="fl" style="font-size:.58rem">Mod. Ataque</span><select id="w1_attr" class="ap" onchange="app.calc()"><option value="FUE">FUE</option><option value="DES">DES</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option><option value="NONE">—</option></select></div>
+                <div><span class="fl" style="font-size:.58rem">Mod. Daño</span><select id="w1_dmg_attr" class="ap" onchange="app.calc()"><option value="FUE">FUE</option><option value="DES">DES</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option><option value="NONE">—</option></select></div>
+              </div>
+              <div class="ccard"><div><span class="clbl">Ataque</span><div class="cval" id="w1_atk_val">—</div></div><div style="text-align:right"><span class="clbl">Daño</span><div class="cval" id="w1_dmg_val">—</div></div></div>
+              <div class="calert" id="w1_alert"></div>
+              <div style="display:grid;grid-template-columns:1fr auto auto;gap:6px;align-items:end;margin-top:6px">
+                <div><span class="fl">Arma Secundaria</span><select id="sel_weapon_sec" aria-label="Arma secundaria" onchange="app.onWeaponChange('w2')"></select></div>
+                <div><span class="fl" style="font-size:.58rem">Mod. Ataque</span><select id="w2_attr" class="ap" onchange="app.calc()"><option value="FUE">FUE</option><option value="DES">DES</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option><option value="NONE">—</option></select></div>
+                <div><span class="fl" style="font-size:.58rem">Mod. Daño</span><select id="w2_dmg_attr" class="ap" onchange="app.calc()"><option value="FUE">FUE</option><option value="DES">DES</option><option value="CON">CON</option><option value="INT">INT</option><option value="SAB">SAB</option><option value="CAR">CAR</option><option value="NONE">—</option></select></div>
+              </div>
+              <div class="ccard"><div><span class="clbl">Ataque</span><div class="cval" id="w2_atk_val">—</div></div><div style="text-align:right"><span class="clbl">Daño</span><div class="cval" id="w2_dmg_val">—</div></div></div>
+              <div class="calert" id="w2_alert"></div>
+              <button class="bcnf" onclick="app.confirmSection('combat')">✓ Confirmar</button>
+            </div>
+            <div id="combat_summary_view" style="display:none">
+              <div class="g3" style="margin-bottom:6px">
+                <div class="fbox"><div class="flbl g">CA</div><div class="fval" style="color:var(--goldb);font-size:1.1rem"><span id="sum_ac">10</span></div></div>
+                <div class="fbox"><div class="flbl">Armadura</div><div class="fval" style="font-size:.74rem;flex-direction:column;gap:1px"><span id="sum_armor_name">—</span><span style="font-size:.55rem;color:var(--muted)" id="sum_armor_type">Normal</span></div></div>
+                <div class="fbox"><div class="flbl">Escudo</div><div class="fval" style="font-size:.74rem"><span id="sum_shield">—</span></div></div>
+              </div>
+              <div class="atk-card">
+                <div class="atk-hdr">
+                  <span class="atk-nm" id="sum_wep1_name">—</span>
+                  <span class="atk-role-badge">Principal</span>
+                </div>
+                <div class="atk-stats-line" id="sum_wep1_stats">—</div>
+                <div class="atk-btns">
+                  <button class="abtn abtn-a" onclick="app.rollWeaponAtk(1)" aria-label="Tirar ataque arma principal">
+                    <span class="abtn-icon">ATK</span>
+                    <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="sum_atk1_bonus">+0</span></span>
+                  </button>
+                  <div class="atk-btn-sep"></div>
+                  <button class="abtn abtn-d" onclick="app.rollWeaponDmg(1)" aria-label="Tirar daño arma principal">
+                    <span class="abtn-icon">DMG</span>
+                    <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="sum_atk1_dmg">1</span></span>
+                  </button>
+                </div>
+              </div>
+              <div class="atk-card secondary">
+                <div class="atk-hdr">
+                  <span class="atk-nm" id="sum_wep2_name">—</span>
+                  <span class="atk-role-badge">Secundaria</span>
+                </div>
+                <div class="atk-stats-line" id="sum_wep2_stats">—</div>
+                <div class="atk-btns">
+                  <button class="abtn abtn-a" onclick="app.rollWeaponAtk(2)" aria-label="Tirar ataque arma secundaria">
+                    <span class="abtn-icon">ATK</span>
+                    <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="sum_atk2_bonus">+0</span></span>
+                  </button>
+                  <div class="atk-btn-sep"></div>
+                  <button class="abtn abtn-d" onclick="app.rollWeaponDmg(2)" aria-label="Tirar daño arma secundaria">
+                    <span class="abtn-icon">DMG</span>
+                    <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="sum_atk2_dmg">1</span></span>
+                  </button>
+                </div>
+              </div>
+              <button class="bedit" onclick="app.editSection('combat')">✏ Editar</button>
+            </div>
+          </div>
+
+          <div class="panel">
+            <div class="ph"><span class="pt">Equipo &amp; Tesoro</span></div>
+            <div id="equipment_edit_view">
+              <div style="background:var(--deep);border:1px solid var(--rim);border-radius:var(--r);padding:6px 8px;margin-bottom:8px">
+                <div style="display:grid;grid-template-columns:auto auto 1fr auto;gap:4px;align-items:end">
+                  <div><span class="fl">Categ.</span><select id="inv_db_category" aria-label="Categoría del objeto" onchange="app.updateDbSelect()" style="font-size:.75rem"><option value="weapons">Armas</option><option value="armors">Armaduras</option><option value="shields">Escudos</option><option value="misc">Misc.</option></select></div>
+                  <div><span class="fl">Objeto</span><select id="inv_db_item" aria-label="Objeto a añadir" style="font-size:.75rem"></select></div>
+                  <div></div>
+                  <button class="btn btn-p" style="font-size:.67rem;padding:6px 9px;align-self:end" data-action="addFromDB">+ Añadir</button>
+                </div>
+              </div>
+              <div class="coin" style="margin-bottom:8px"><label>Oro (PO)</label><input type="number" id="gold_coins_edit" value="0" min="0" onchange="app.syncGold('edit')" inputmode="numeric" aria-label="Monedas de oro"></div>
+              <div id="inv_backpack_list" style="display:flex;flex-direction:column;gap:4px"></div>
+              <div style="text-align:center;margin-top:8px"><button class="bedit" data-action="addCustomItem">+ Objeto Personalizado</button></div>
+              <button class="bcnf" onclick="app.confirmSection('equipment')">✓ Confirmar</button>
+            </div>
+            <div id="equipment_summary_view" style="display:none">
+              <div style="display:flex;justify-content:space-between;align-items:center;background:var(--deep);border:1px solid var(--rim);border-radius:var(--r);padding:5px 8px;margin-bottom:6px">
+                <span style="font-family:var(--fd);font-size:.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:.1em">Tesoro</span>
+                <span style="font-family:var(--fm);color:var(--gold);font-weight:600"><span id="gold_coins_display">0</span> PO</span>
+              </div>
+              <div id="inv_summary_list" style="display:flex;flex-direction:column;gap:2px"></div>
+              <div style="margin-top:6px;padding-top:6px;border-top:1px solid var(--rim);display:flex;justify-content:space-between">
+                <span style="font-family:var(--fd);font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted)">Carga Total</span>
+                <span id="load_summary_display" style="font-family:var(--fm);font-weight:600;color:var(--gold)">0/0</span>
+              </div>
+              <button class="bedit" onclick="app.editSection('equipment')">✏ Editar</button>
+            </div>
+          </div>
+        </div><!-- /page 3 -->
+        <div class="page" id="page_4">
+          <!-- Configuración de Campaña -->
+          <div class="panel">
+            <div class="ph">
+              <span class="pt">Configuración de Campaña</span>
+            </div>
+            <!-- Summary view -->
+            <div id="campana_summary" style="padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center">
+              <span class="leth-summary-badge" id="campana_leth_badge" data-tier="1">
+                <span id="campana_leth_label">Letalidad 1 — +1 PV/nivel</span>
+              </span>
+              <button class="bedit" id="campana_edit_btn" data-action="editCampana">✏ Editar</button>
+            </div>
+            <!-- Edit view -->
+            <div id="campana_edit" style="display:none;margin-top:8px">
+              <span class="fl" style="margin-bottom:8px;display:block">Nivel de Letalidad</span>
+              <div class="g3" style="gap:8px">
+                <button class="leth-card active" id="leth_1" data-tier="1"
+                  onclick="app.setLethality(1)" onmousedown="this.blur()">
+                  <div class="leth-check">✓</div>
+                  <div class="leth-name">Letalidad 1</div>
+                  <div class="leth-bonus">+1 PV/nivel</div>
+                </button>
+                <button class="leth-card" id="leth_2" data-tier="2"
+                  onclick="app.setLethality(2)" onmousedown="this.blur()">
+                  <div class="leth-check">✓</div>
+                  <div class="leth-name">Letalidad 2</div>
+                  <div class="leth-bonus">+2 PV/nivel</div>
+                </button>
+                <button class="leth-card" id="leth_3" data-tier="3"
+                  onclick="app.setLethality(3)" onmousedown="this.blur()">
+                  <div class="leth-check">✓</div>
+                  <div class="leth-name">Letalidad 3</div>
+                  <div class="leth-bonus">+3 PV/nivel</div>
+                </button>
+              </div>
+              <p style="font-family:var(--fm);font-size:.62rem;color:var(--muted);margin-top:8px;font-style:italic;line-height:1.45">PV adicionales a partir del Nivel 2. No afectan al Nivel 1.</p>
+              <button class="bcnf" data-action="confirmCampana">✓ Confirmar</button>
+            </div>
+          </div>
+          <div class="panel"><div class="ph"><span class="pt" id="detail_desc_title">Linaje: —</span></div><div id="detail_desc_body"><p style="color:var(--muted);font-size:.8rem;font-style:italic">Selecciona un Linaje.</p></div></div>
+          <div class="panel"><div class="ph"><span class="pt" id="detail_arq_title">Arquetipo: —</span></div><div id="detail_arq_body"><p style="color:var(--muted);font-size:.8rem;font-style:italic">Selecciona un Arquetipo.</p></div></div>
+          <div class="panel"><div class="ph"><span class="pt">Talentos Activos</span></div><div id="detail_talents_list"><p class="txt-it-c">Sin talentos.</p></div></div>
+        </div><!-- /page 4 -->
+
+      </div><!-- /pages-track -->
+    </div><!-- /pages-wrapper -->
+
+    <nav class="bnav">
+      <button class="nbtn active" onclick="app.goToPage(0)" aria-label="Ir a Perfil"><span class="nico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="7" r="4"/><path d="M12 14c-5 0-8 2.5-8 4v1h16v-1c0-1.5-3-4-8-4z"/></svg></span><span class="nlbl">Perfil</span></button>
+      <button class="nbtn" onclick="app.goToPage(1)" aria-label="Ir a Stats"><span class="nico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="13" width="4" height="8" rx="1"/><rect x="9" y="8" width="4" height="13" rx="1"/><rect x="16" y="4" width="4" height="17" rx="1"/></svg></span><span class="nlbl">Stats</span></button>
+      <button class="nbtn" onclick="app.goToPage(2)" aria-label="Ir a Aptitudes"><span class="nico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M2 4.5A2.5 2.5 0 0 1 4.5 2H20v20H4.5A2.5 2.5 0 0 1 2 19.5v-15z"/><path d="M20 2v20"/><path d="M7 8h7"/><path d="M7 12h5"/><path d="M7 16h7"/></svg></span><span class="nlbl">Aptitudes</span></button>
+      <button class="nbtn" onclick="app.goToPage(3)" aria-label="Ir a Equipo"><span class="nico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="10" width="22" height="11" rx="1.5"/><path d="M1 10 Q1 3 12 3 Q23 3 23 10"/><line x1="1" y1="10" x2="23" y2="10"/><rect x="9" y="8.5" width="6" height="4" rx="1" stroke-width="1.5"/><circle cx="12" cy="10.5" r="1" fill="currentColor" stroke="none"/><path d="M8.5 4.5 Q12 1.5 15.5 4.5" stroke-width="1.4"/></svg></span><span class="nlbl">Equipo</span></button>
+      <button class="nbtn" onclick="app.goToPage(4)" aria-label="Ir a Detalle"><span class="nico"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="13" y2="17"/></svg></span><span class="nlbl">Detalle</span></button>
+    </nav>
+  </div>
+</div><!-- /app-screen -->
+<dialog id="settings_modal" class="modal" aria-labelledby="settings_modal_title">
+  <div class="mhd">
+    <div class="mhd-left">
+      <div class="mhd-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></div>
+      <div>
+        <span class="mttl" id="settings_modal_title">Ajustes &amp; Datos</span>
+        <span class="mttl-sub">Configuración del personaje y la app</span>
+      </div>
+    </div>
+    <button class="bcls" data-action="closeSettings" aria-label="Cerrar ajustes">✕</button>
+  </div>
+  <div class="mbd" style="display:flex;flex-direction:column;gap:14px">
+
+    <!-- ── RETRATO ─────────────────────────────────────────────── -->
+    <section aria-labelledby="dvdr_port">
+      <div class="dvdr" id="dvdr_port">Retrato</div>
+
+      <!-- Master: prefs individuales por personaje -->
+      <div class="set-row">
+        <div class="set-row-txt">
+          <span class="set-lbl">Ajustes individuales por personaje</span>
+          <span class="set-hint">Activado: cada personaje conserva su propio retrato (tamaño, forma y borde). Desactivado: todos usan el predeterminado global.</span>
+        </div>
+        <button id="per_char_prefs_btn" class="toggle-btn" data-action="togglePerCharPrefs" aria-pressed="true" aria-label="Guardar ajustes de retrato por personaje"></button>
+      </div>
+
+      <!-- Ámbito de aplicación -->
+      <div style="margin-bottom:12px">
+        <span class="set-lbl" style="display:block;margin-bottom:7px">Aplicar a</span>
+        <div class="seg" role="group" aria-label="Ámbito de los ajustes de retrato">
+          <button type="button" class="seg-btn" id="port_scope_char" onclick="app.setPortraitScope('char')" aria-pressed="false">Este personaje</button>
+          <button type="button" class="seg-btn active" id="port_scope_global" onclick="app.setPortraitScope('global')" aria-pressed="true">Global (todos)</button>
+        </div>
+      </div>
+
+      <!-- Tamaño -->
+      <div style="margin-bottom:10px">
+        <span class="set-lbl" style="display:block;margin-bottom:7px">Tamaño</span>
+        <div style="display:flex;gap:5px">
+          <button class="fs-btn ps-btn" data-size="xs" onclick="app.setPortraitSize('xs')" title="Muy pequeño" style="font-size:.6rem;flex:1;padding:5px 2px">XS</button>
+          <button class="fs-btn ps-btn" data-size="s"  onclick="app.setPortraitSize('s')"  title="Pequeño"     style="font-size:.6rem;flex:1;padding:5px 2px">S</button>
+          <button class="fs-btn ps-btn active" data-size="m" onclick="app.setPortraitSize('m')" title="Mediano" style="font-size:.6rem;flex:1;padding:5px 2px">M</button>
+          <button class="fs-btn ps-btn" data-size="l"  onclick="app.setPortraitSize('l')"  title="Grande"      style="font-size:.6rem;flex:1;padding:5px 2px">L</button>
+          <button class="fs-btn ps-btn" data-size="xl" onclick="app.setPortraitSize('xl')" title="Muy grande"  style="font-size:.6rem;flex:1;padding:5px 2px">XL</button>
+        </div>
+      </div>
+
+      <!-- Forma -->
+      <div style="margin-bottom:10px">
+        <span class="set-lbl" style="display:block;margin-bottom:7px">Forma</span>
+        <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+          <button class="fs-btn psh-btn active" data-shape="rect"    onclick="app.setPortraitShape('rect')"    title="Rectangular"  style="font-size:.6rem;padding:5px 2px">Rect</button>
+          <button class="fs-btn psh-btn"        data-shape="rounded" onclick="app.setPortraitShape('rounded')" title="Redondeado"   style="font-size:.6rem;padding:5px 2px">Suave</button>
+          <button class="fs-btn psh-btn"        data-shape="arch"    onclick="app.setPortraitShape('arch')"    title="Arco superior" style="font-size:.6rem;padding:5px 2px">Arco</button>
+          <button class="fs-btn psh-btn"        data-shape="circle"  onclick="app.setPortraitShape('circle')"  title="Círculo"      style="font-size:.6rem;padding:5px 2px">Círculo</button>
+        </div>
+      </div>
+
+      <!-- Borde premium (fraseo positivo) -->
+      <div class="set-row">
+        <div class="set-row-txt">
+          <span class="set-lbl">Borde Premium</span>
+          <span class="set-hint">Marco dorado ornamentado del retrato. Desactívalo para un borde sutil.</span>
+        </div>
+        <button id="port_border_btn" class="toggle-btn" data-action="togglePortraitBorder" aria-pressed="true" aria-label="Activar o desactivar el borde premium del retrato"></button>
+      </div>
+
+      <!-- Aplicar (al final: configurar → confirmar) -->
+      <div class="set-hint" id="port_scope_hint" style="margin-bottom:8px;line-height:1.5">Fija el predeterminado para nuevos personajes y para los que no tengan ajustes propios.</div>
+      <button class="bcnf" id="confirm_portrait_btn" data-action="applyPortraitSettings" style="margin:0;width:100%">✓ Guardar como global</button>
+    </section>
+
+    <!-- ── INTERFAZ ────────────────────────────────────────────── -->
+    <section aria-labelledby="dvdr_ui">
+      <div class="dvdr" id="dvdr_ui">Interfaz</div>
+      <div class="set-row" style="margin-bottom:10px">
+        <span class="set-lbl">Tamaño de Fuente</span>
+        <div style="display:flex;gap:5px;align-items:center">
+          <button class="fs-btn" id="fs_small"  onclick="app.setFontSize('small')"  title="Pequeño"    style="font-size:11px">A</button>
+          <button class="fs-btn" id="fs_normal" onclick="app.setFontSize('normal')" title="Normal"     style="font-size:14px">A</button>
+          <button class="fs-btn" id="fs_large"  onclick="app.setFontSize('large')"  title="Grande"     style="font-size:17px">A</button>
+          <button class="fs-btn" id="fs_xlarge" onclick="app.setFontSize('xlarge')" title="Muy Grande" style="font-size:20px">A</button>
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-row-txt">
+          <span class="set-lbl" id="scroll_preserve_lbl">Recordar posición al volver</span>
+          <span class="set-hint">Mantiene el scroll de cada sección al cambiar de pestaña</span>
+        </div>
+        <button id="scroll_preserve_btn" class="toggle-btn" data-action="toggleScrollPreserve" aria-pressed="false" title="Activar/desactivar recordar posición de scroll" aria-label="Activar recordar posición al volver"></button>
+      </div>
+    </section>
+
+    <!-- ── APARIENCIA ──────────────────────────────────────────── -->
+    <section aria-labelledby="dvdr_look">
+      <div class="dvdr" id="dvdr_look">Apariencia</div>
+      <span class="set-lbl" style="display:block;margin-bottom:7px">Tema Visual</span>
+      <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">
+        <button class="fs-btn theme-btn" data-theme="deco" onclick="app.setTheme('deco')" title="Art Déco" style="flex:1;padding:6px 2px;font-size:.58rem">Art Déco</button>
+        <button class="fs-btn theme-btn" data-theme="blood" onclick="app.setTheme('blood')" title="Sangre" style="flex:1;padding:6px 2px;font-size:.58rem">Sangre</button>
+        <button class="fs-btn theme-btn" data-theme="void" onclick="app.setTheme('void')" title="Vacío" style="flex:1;padding:6px 2px;font-size:.58rem">Vacío</button>
+        <button class="fs-btn theme-btn" data-theme="arcane" onclick="app.setTheme('arcane')" title="Arcano" style="flex:1;padding:6px 2px;font-size:.58rem">Arcano</button>
+        <button class="fs-btn theme-btn" data-theme="parchment" onclick="app.setTheme('parchment')" title="Pergamino" style="flex:1;padding:6px 2px;font-size:.58rem">Pergamino</button>
+      </div>
+      <span class="set-lbl" style="display:block;margin-bottom:7px">Fondo de Pantalla</span>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+        <div>
+          <div class="set-hint" style="margin-bottom:5px;letter-spacing:.1em;text-transform:uppercase">Inicio</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-g" style="flex:1;font-size:.6rem;padding:6px 4px" onclick="document.getElementById('bg_home_input').click()">↑ Subir</button>
+            <button id="bg_home_clear" class="btn btn-p" style="font-size:.6rem;padding:6px 4px;display:none" onclick="app.setBgImage('home','')" aria-label="Quitar fondo de inicio">✕</button>
+          </div>
+        </div>
+        <div>
+          <div class="set-hint" style="margin-bottom:5px;letter-spacing:.1em;text-transform:uppercase">Personaje</div>
+          <div style="display:flex;gap:4px">
+            <button class="btn btn-g" style="flex:1;font-size:.6rem;padding:6px 4px" onclick="document.getElementById('bg_app_input').click()">↑ Subir</button>
+            <button id="bg_app_clear" class="btn btn-p" style="font-size:.6rem;padding:6px 4px;display:none" onclick="app.setBgImage('app','')" aria-label="Quitar fondo de personaje">✕</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── DATOS ───────────────────────────────────────────────── -->
+    <section aria-labelledby="dvdr_data">
+      <div class="dvdr" id="dvdr_data">Datos</div>
+      <span class="set-lbl" style="display:block;margin-bottom:7px">Personaje</span>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:12px">
+        <button class="btn btn-g" data-action="saveFromSettings">💾 Guardar</button>
+        <button class="btn btn-g" data-action="exportJSON">↓ Exportar JSON</button>
+      </div>
+      <span class="set-lbl" style="display:block;margin-bottom:7px">Reglas del Juego</span>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <button class="btn btn-g" style="width:100%" onclick="document.getElementById('json_rules_input').click()">↑ Importar Reglas (JSON)</button>
+        <button class="btn btn-gold" style="width:100%" data-action="openDatabaseEditor">⚙ Editor de Base de Datos</button>
+      </div>
+    </section>
+
+    <button class="bcnf" style="width:100%;margin-top:4px" data-action="closeSettings">✓ Listo</button>
+  </div>
+</dialog>
+<div id="db_panel" class="fs-panel" role="region" aria-label="Editor de reglas">
+  <div class="fs-hdr" style="background:linear-gradient(180deg,rgba(10,8,24,.97) 0%,var(--raised) 100%)">
+    <button class="fs-hdr-back" data-action="closeDatabaseEditor" aria-label="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="fs-hdr-center">
+      <span class="fs-hdr-ttl" style="color:var(--ice)" id="db_editor_title">Editor de Reglas</span>
+      <span class="fs-hdr-sub">Base de datos del sistema de juego</span>
+    </div>
+    <div class="fs-hdr-actions">
+      <button class="btn btn-g" style="font-size:.58rem;padding:5px 10px;min-height:36px;color:var(--dim)" data-action="exportRulesDB" aria-label="Exportar reglas">↓ Exportar</button>
+    </div>
+  </div>
+
+  <div class="fs-body">
+    <div class="dbs" id="db_sidebar">
+      <div class="dbs-section-label">Personaje</div>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('descriptors')" aria-label="Editar Linajes"><span class="catbtn-dot"></span>Linajes</button>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('archetypes')" aria-label="Editar Arquetipos"><span class="catbtn-dot"></span>Arquetipos</button>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('backgrounds')" aria-label="Editar Trasfondos"><span class="catbtn-dot"></span>Trasfondos</button>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('talents')" aria-label="Editar Talentos"><span class="catbtn-dot"></span>Talentos</button>
+      <div class="dbs-section-label">Equipo</div>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('weapons')" aria-label="Editar Armas"><span class="catbtn-dot"></span>Armas</button>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('armors')" aria-label="Editar Armaduras"><span class="catbtn-dot"></span>Armaduras</button>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('shields')" aria-label="Editar Escudos"><span class="catbtn-dot"></span>Escudos</button>
+      <div class="dbs-section-label">Magia</div>
+      <button class="catbtn db-cat" onclick="app.dbEditCategory('spells')" aria-label="Editar Trucos y Conjuros"><span class="catbtn-dot"></span>Trucos / Conjuros</button>
+      <div style="flex:1"></div>
+    </div>
+    <div class="dbct">
+      <div id="db_list_container">
+        <div class="db-empty">
+          <div class="db-empty-icon">⚙</div>
+          <p>Selecciona una categoría<br>en el panel izquierdo</p>
+        </div>
+      </div>
+      <div id="db_form_container" style="display:none"></div>
+    </div>
+  </div>
+</div>
+<div id="talent_panel" class="fs-panel" role="region" aria-label="Gestor de talentos">
+  <div class="fs-hdr">
+    <button class="fs-hdr-back" data-action="closeTalentManager" aria-label="Volver"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg></button>
+    <div class="fs-hdr-center">
+      <span class="fs-hdr-ttl" id="talent_modal_title">Gestor de Talentos</span>
+      <span class="fs-hdr-sub">Elige hasta 3 talentos para el personaje</span>
+    </div>
+    <div class="fs-hdr-actions">
+      <button class="btn btn-g" style="font-size:.6rem;padding:5px 10px;min-height:36px;color:var(--blood);border-color:rgba(168,42,58,.4)" data-action="clearTalents">✕ Limpiar</button>
+    </div>
+  </div>
+
+  <div class="fs-body">
+    <div class="tm-toolbar">
+      <input class="tm-search" id="tm_search" type="search"
+        placeholder="Buscar talento…" autocomplete="off" spellcheck="false"
+        oninput="app._talentFilter()" aria-label="Buscar talento por nombre o efecto">
+      <div class="tm-filters">
+        <button type="button" class="tm-fchip" id="tm_filter_eligible"
+          onclick="app._toggleTalentFilter('eligible', this)" aria-pressed="false">
+          <span class="tm-fchip-dot"></span>Solo los que cumplo
+        </button>
+        <button type="button" class="tm-fchip" id="tm_filter_arq"
+          onclick="app._toggleTalentFilter('arq', this)" aria-pressed="false">
+          <span class="tm-fchip-dot"></span>Mi Arquetipo
+        </button>
+      </div>
+    </div>
+    <div class="tm-cols" style="flex:1;min-height:0;display:flex;overflow:hidden">
+      <div class="tms" id="tm_categories" style="overflow-y:auto"></div>
+      <div class="tmct" id="tm_list">
+        <p class="tm-empty">Selecciona una categoría.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="fs-footer">
+    <div class="fs-footer-info">
+      Talentos: <span class="mft-count" id="talent_count_modal">0</span><span style="color:var(--border)">/3</span>
+    </div>
+    <button class="btn btn-gold" data-action="closeTalentManager">✓ Confirmar</button>
+  </div>
+</div>
+<dialog id="crop_modal" class="modal" aria-labelledby="crop_modal_title">
+  <div class="crl">
+    <div class="mhd">
+      <span class="mttl" id="crop_modal_title">✦ Ajustar Retrato</span>
+      <button class="bcls" data-action="cancelCrop" aria-label="Cancelar recorte de retrato">✕</button>
+    </div>
+    <div class="crws" id="crop_ws"
+      onmousedown="app.cropDragStart(event)"
+      ontouchstart="app.cropDragStart(event)">
+      <img class="crimg" id="crop_preview" src="" alt="" draggable="false">
+      <div class="cr-overlay" id="crop_overlay"></div>
+      <div class="crfr" id="crop_frame"></div>
+      <div class="cr-grid" id="cr_grid"><svg id="cr_grid_svg" overflow="visible"></svg></div>
+    </div>
+    <div class="crsd">
+      <div class="cr-ctrl-row">
+        <button class="cr-zoom-btn" onclick="app.cropZoomStep(-0.04)">−</button>
+        <input type="range" id="crop_zoom" min="0.05" max="8" step="0.005" value="1"
+          oninput="app.cropZoomSlider(this.value)">
+        <button class="cr-zoom-btn" onclick="app.cropZoomStep(0.04)">+</button>
+        <span class="cr-zoom-lbl" id="cr_zoom_lbl">100%</span>
+      </div>
+      <div class="cr-ctrl-row">
+        <div class="cr-actions">
+          <button class="cr-rot-btn" onclick="app.cropRotate(-90)">↺ −90°</button>
+          <button class="cr-rot-btn" onclick="app.cropRotate(90)">↻ +90°</button>
+          <button class="cr-fit-btn" data-action="cropFit">⊡ Fit</button>
+        </div>
+      </div>
+      <div class="cr-apply-row">
+        <button class="bsave" data-action="applyCrop">✓ Aplicar Retrato</button>
+      </div>
+    </div>
+  </div>
+</dialog>
+
+<!-- ── Scripts ──────────────────────────────────────────────────
+     Orden de carga (defer respeta el orden de declaración):
+       1. data.js        Base de datos de reglas por defecto
+       2. constants.js   Constantes y temporizadores de la UI
+       3. storage.js     Persistencia versionada (localStorage)
+       4. ui-dialogs.js  Diálogos modales (escudo anti ghost-click)
+       5. app.js         Lógica principal de la aplicación
+       6. boot.js        Arranque + registro del Service Worker
+     ───────────────────────────────────────────────────────────── -->
+<script defer src="js/data.js"></script>
+<script defer src="js/constants.js"></script>
+<script defer src="js/storage.js"></script>
+<script defer src="js/ui-dialogs.js"></script>
+<script defer src="js/app.js"></script>
+<script defer src="js/boot.js"></script>
+</body>
+</html>
