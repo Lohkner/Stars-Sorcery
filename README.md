@@ -1,9 +1,24 @@
-# S&S Companion — v34
+# S&S Companion — v35
 
 Hoja de personaje digital (PWA) para **Stars & Sorcery RPG**. Esta versión reestructura el monolito original de 7.800 líneas en un proyecto modular, corrige el bug de *touch bleed-through* del diálogo de confirmación y completa las piezas PWA que faltaban. **Toda la funcionalidad original se conserva** (verificado con suite de pruebas automatizada).
 
 
 
+
+
+## Novedades v35 — Modo lectura de "Equipo de Combate" reconstruido desde cero
+
+La vista resumen de Equipo de Combate cambió de arquitectura. La versión anterior era markup estático en `index.html` cuyo contenido se actualizaba "raspando" el `textContent` de la vista de edición — un acoplamiento al DOM que dependía del orden de ejecución y que originó toda la familia de bugs de "Desarmado fantasma".
+
+Ahora:
+
+- `calc()` deposita su resultado en un **estado único** (`app._combat`: CA, armadura, escudo, y nombre/ataque/daño/avisos de ambas armas).
+- `_buildCombatSummary()` **regenera la vista completa** desde ese estado en cada cálculo. Cero lecturas del DOM de otras vistas ⇒ es estructuralmente imposible que el modo lectura diverja de los valores calculados, sin importar el orden de carga o renderizado.
+- En `index.html` el contenedor `#combat_summary_view` queda como cascarón vacío que el renderer llena (misma apariencia: se reutilizan las clases `atk-card`, `fbox`, `abtn`…).
+- Mejora: los avisos del arma (p. ej. "⚠ Sin datos de arma" o requisitos de FUE/DES no cumplidos) ahora también se ven en el modo lectura.
+- Los nombres se escapan con `_esc` (los items personalizados son entrada del usuario).
+
+Suite de humo: **28 pruebas**, todas en verde.
 
 ## Novedades v34 — Fix: resumen de "Equipo de Combate" rancio al cargar
 

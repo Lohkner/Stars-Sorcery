@@ -11,6 +11,7 @@ const { window } = dom;
 window.navigator.vibrate = () => true;
 // jsdom no expone structuredClone en el contexto window (los navegadores sí desde 2022)
 window.structuredClone = (o) => JSON.parse(JSON.stringify(o));
+window.HTMLElement.prototype.scrollIntoView = window.HTMLElement.prototype.scrollIntoView || function(){};
 
 // Load scripts in declared order (defer semantics). Se concatenan porque
 // window.eval no comparte const/let entre llamadas (a diferencia del navegador,
@@ -192,6 +193,22 @@ setTimeout(() => {
       const chip  = document.getElementById('sum_atk1_bonus').textContent + ' / ' + document.getElementById('sum_atk1_dmg').textContent;
       if (!stats.includes(document.getElementById('sum_atk1_dmg').textContent))
         throw new Error('texto y chip divergen: "' + stats + '" vs "' + chip + '"');
+    });
+    t('Modo lectura reconstruido: se regenera desde el estado al confirmar', () => {
+      // Cambiar el arma en edición y confirmar → el resumen debe seguir al estado
+      const w = app.inventory.find(i => i.type === 'weapons' && (i.dbData || i.dbKey));
+      document.getElementById('sel_weapon').value = String(w.uid);
+      app.onWeaponChange('w1');
+      app.confirmSection('combat');
+      if (document.getElementById('sum_wep1_name').textContent !== app._combat.w[0].name)
+        throw new Error('el resumen no refleja el estado _combat');
+      document.getElementById('sel_weapon').value = 'unarmed';
+      app.onWeaponChange('w1');
+      app.confirmSection('combat');
+      if (document.getElementById('sum_wep1_name').textContent !== 'Desarmado')
+        throw new Error('el resumen no se regeneró al volver a desarmado');
+      if (!document.querySelector('#combat_summary_view .bedit'))
+        throw new Error('falta el botón Editar en la vista regenerada');
     });
     t('_nextUid() es monotónico y sin colisiones', () => {
       const a = app._nextUid(), b = app._nextUid(), c = app._nextUid();

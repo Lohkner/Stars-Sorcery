@@ -567,48 +567,9 @@
               <button class="bcnf" onclick="app.confirmSection('combat')">✓ Confirmar</button>
             </div>
             <div id="combat_summary_view" style="display:none">
-              <div class="g3" style="margin-bottom:6px">
-                <div class="fbox"><div class="flbl g">CA</div><div class="fval" style="color:var(--goldb);font-size:1.1rem"><span id="sum_ac">10</span></div></div>
-                <div class="fbox"><div class="flbl">Armadura</div><div class="fval" style="font-size:.74rem;flex-direction:column;gap:1px"><span id="sum_armor_name">—</span><span style="font-size:.55rem;color:var(--muted)" id="sum_armor_type">Normal</span></div></div>
-                <div class="fbox"><div class="flbl">Escudo</div><div class="fval" style="font-size:.74rem"><span id="sum_shield">—</span></div></div>
-              </div>
-              <div class="atk-card">
-                <div class="atk-hdr">
-                  <span class="atk-nm" id="sum_wep1_name">—</span>
-                  <span class="atk-role-badge">Principal</span>
-                </div>
-                <div class="atk-stats-line" id="sum_wep1_stats">—</div>
-                <div class="atk-btns">
-                  <button class="abtn abtn-a" onclick="app.rollWeaponAtk(1)" aria-label="Tirar ataque arma principal">
-                    <span class="abtn-icon">ATK</span>
-                    <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="sum_atk1_bonus">+0</span></span>
-                  </button>
-                  <div class="atk-btn-sep"></div>
-                  <button class="abtn abtn-d" onclick="app.rollWeaponDmg(1)" aria-label="Tirar daño arma principal">
-                    <span class="abtn-icon">DMG</span>
-                    <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="sum_atk1_dmg">1</span></span>
-                  </button>
-                </div>
-              </div>
-              <div class="atk-card secondary">
-                <div class="atk-hdr">
-                  <span class="atk-nm" id="sum_wep2_name">—</span>
-                  <span class="atk-role-badge">Secundaria</span>
-                </div>
-                <div class="atk-stats-line" id="sum_wep2_stats">—</div>
-                <div class="atk-btns">
-                  <button class="abtn abtn-a" onclick="app.rollWeaponAtk(2)" aria-label="Tirar ataque arma secundaria">
-                    <span class="abtn-icon">ATK</span>
-                    <span class="abtn-text"><span class="asub">Atacar</span><span class="aval" id="sum_atk2_bonus">+0</span></span>
-                  </button>
-                  <div class="atk-btn-sep"></div>
-                  <button class="abtn abtn-d" onclick="app.rollWeaponDmg(2)" aria-label="Tirar daño arma secundaria">
-                    <span class="abtn-icon">DMG</span>
-                    <span class="abtn-text"><span class="asub">Daño</span><span class="aval" id="sum_atk2_dmg">1</span></span>
-                  </button>
-                </div>
-              </div>
-              <button class="bedit" onclick="app.editSection('combat')">✏ Editar</button>
+              <!-- Contenido generado por app._buildCombatSummary() desde app._combat
+                   en cada calc(). Render completo desde estado: no puede divergir
+                   de los valores calculados. -->
             </div>
           </div>
 
