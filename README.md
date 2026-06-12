@@ -1,7 +1,26 @@
-# S&S Companion — v32
+# S&S Companion — v33
 
 Hoja de personaje digital (PWA) para **Stars & Sorcery RPG**. Esta versión reestructura el monolito original de 7.800 líneas en un proyecto modular, corrige el bug de *touch bleed-through* del diálogo de confirmación y completa las piezas PWA que faltaban. **Toda la funcionalidad original se conserva** (verificado con suite de pruebas automatizada).
 
+
+
+## Novedades v33 — Fix: arma equipada que decía "Desarmado"
+
+**Síntoma reportado.** Al abrir un personaje, Principal/Secundaria parecían "resetearse": el botón de ataque mostraba valores correctos pero el texto decía *Desarmado* y las tiradas calculaban ataque/daño de desarmado.
+
+**Causas raíz (tres, encadenadas):**
+
+1. **El editor ✎ destruía los datos del item.** `saveCustomItem` reconstruía el objeto como `{uid, name, slots, type}`, eliminando `dbKey`/`dbData`. Editar un arma equipada (aunque solo el nombre) la dejaba sin datos de juego → `_calcWeapon` no encontraba `wData` y degradaba a "Desarmado" pese a seguir seleccionada. **Fix:** la edición ahora preserva la identidad del item (`{...existing}`) y sus datos.
+2. **Caché de tiradas rancia.** La rama "desarmado" de `_calcWeapon` retornaba sin actualizar `_weaponAtkData`, así que el botón de tirada conservaba el bono del arma anterior — el estado mixto "botón correcto / texto desarmado". **Fix:** la caché se actualiza en todas las ramas.
+3. **uids colisionables.** `Date.now()` a secas genera uids duplicados al añadir varios items en el mismo milisegundo; con duplicados, los selects y `_getInventoryItem` podían resolver al item equivocado. **Fix:** generador monotónico `_nextUid()` + migración automática al cargar personajes antiguos (el primer item conserva el uid, así las selecciones guardadas no cambian).
+
+**Mejoras asociadas:**
+
+- El editor de items ahora permite definir **datos de juego por tipo**: daño y bono de ataque (armas), CA base y categoría (armaduras), bono de CA (escudos). Los objetos personalizados ya combaten de verdad.
+- Arma sin datos (heredada de guardados antiguos): se respeta la selección — muestra **su nombre**, ataca como arma genérica 1d4 y avisa *"⚠ Sin datos de arma — edítala (✎) para definirlos"* en lugar de fingir "Desarmado".
+- Armadura/escudo sin datos: mismos números que antes (CA 10 / bono 0) pero mostrando el nombre real con "(sin datos)" en vez de "Sin Armadura".
+
+Suite de humo: **26 pruebas**, todas en verde.
 
 ## Novedades v32 — Ajustes & Datos rediseñado
 
@@ -18,7 +37,7 @@ Hoja de personaje digital (PWA) para **Stars & Sorcery RPG**. Esta versión rees
 - **Capa 4 — guardia de armado**: el click sintetizado (~300 ms tras el `touchend`) que aterrice *sobre los propios botones* del diálogo recién abierto ya no puede activarlos: cada botón exige un `pointerdown` propio posterior a la apertura (las activaciones de teclado, `detail === 0`, se aceptan siempre). Antes, tocar "Guardar" justo donde luego aparece "✓ Sobreescribir" podía auto-confirmar.
 - **`UI.ghostShield(ms)`**: escudo independiente reutilizable. `app.saveFromSettings()` y `app.closeSettings()` lo usan al cerrar el modal de Ajustes, de modo que el toque sobre "💾 Guardar"/"✓ Listo"/"✕" no traspasa a la hoja que queda al descubierto ni al diálogo de confirmación que aparece después.
 
-La suite de humo crece a **22 pruebas** (todas en verde), incluyendo: ámbito global vs por-personaje sin contaminación cruzada, cierre de Ajustes bajo escudo, liberación anticipada del escudo y la guardia de armado contra clicks fantasma sobre el botón OK.
+La suite de humo creció a 22 pruebas en esta versión, incluyendo: ámbito global vs por-personaje sin contaminación cruzada, cierre de Ajustes bajo escudo, liberación anticipada del escudo y la guardia de armado contra clicks fantasma sobre el botón OK.
 
 ## Estructura del proyecto
 

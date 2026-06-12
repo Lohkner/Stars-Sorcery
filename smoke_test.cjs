@@ -133,6 +133,54 @@ setTimeout(() => {
       probe.removeEventListener('click', h);
       if (!received) throw new Error('release() no liberó el escudo');
     });
+    // ── Nuevos: combate / inventario (fix "Desarmado fantasma") ──
+    t('Editar un arma equipada (✎) preserva sus datos de juego', () => {
+      const wIdx = app.inventory.findIndex(i => i.type === 'weapons');
+      if (wIdx === -1) throw new Error('sin arma en inventario');
+      const w = app.inventory[wIdx];
+      document.getElementById('sel_weapon').value = String(w.uid);
+      app.onWeaponChange('w1');
+      const dmgBefore = document.getElementById('w1_dmg_val').textContent;
+      app._openCustomItemForm(wIdx);
+      document.getElementById('ci_name').value = w.name + ' +1';
+      app.saveCustomItem();
+      const nm = document.getElementById('atk_name_1').textContent;
+      if (nm === 'Desarmado') throw new Error('el arma editada degradó a Desarmado');
+      if (!nm.endsWith('+1')) throw new Error('nombre no actualizado: ' + nm);
+      if (document.getElementById('w1_dmg_val').textContent !== dmgBefore)
+        throw new Error('el daño cambió al editar solo el nombre');
+    });
+    t('Arma sin datos de juego: muestra su nombre, daño 1d4 genérico y aviso', () => {
+      app.inventory.push({ uid: '999111', name: 'Hacha rota', slots: 1, type: 'weapons' });
+      app.renderInventory(); app.syncCombatOptions();
+      document.getElementById('sel_weapon').value = '999111';
+      app.onWeaponChange('w1');
+      if (document.getElementById('atk_name_1').textContent !== 'Hacha rota')
+        throw new Error('no respeta el nombre del arma');
+      if (!document.getElementById('w1_dmg_val').textContent.startsWith('1d4'))
+        throw new Error('daño genérico incorrecto');
+      if (!document.getElementById('w1_alert').textContent.includes('Sin datos'))
+        throw new Error('falta el aviso de datos faltantes');
+      const atkTxt = parseInt(document.getElementById('w1_atk_val').textContent.replace('+','')) || 0;
+      if (app._weaponAtkData[0] !== atkTxt)
+        throw new Error('caché de tirada incoherente con el texto: ' + app._weaponAtkData[0] + ' vs ' + atkTxt);
+    });
+    t('uids duplicados heredados se migran (el primero conserva el uid)', () => {
+      app.applyCharData({ inventory: [
+        { uid: 123, name: 'Espada', slots: 1, type: 'weapons', dbData: { name: 'Espada', dmg: '1d8' } },
+        { uid: 123, name: 'Cota',   slots: 2, type: 'armors',  dbData: { name: 'Cota', ca: 14, type: 'medium' } },
+        { uid: 123, name: 'Saco',   slots: 1, type: 'misc' },
+      ], inputs: {}, selects: { sel_weapon: '123' }, checks: [] });
+      const uids = app.inventory.map(i => i.uid);
+      if (new Set(uids).size !== 3) throw new Error('uids siguen duplicados: ' + uids.join(','));
+      if (uids[0] !== '123') throw new Error('el primero no conservó su uid');
+      if (document.getElementById('atk_name_1').textContent !== 'Espada')
+        throw new Error('la selección guardada no resolvió al arma correcta');
+    });
+    t('_nextUid() es monotónico y sin colisiones', () => {
+      const a = app._nextUid(), b = app._nextUid(), c = app._nextUid();
+      if (new Set([a, b, c]).size !== 3) throw new Error('colisión de uids');
+    });
     t('rollDice() funciona', () => app.rollDice('1d20+3', 'Prueba'));
     t('Inventario: addFromDB', () => { app.updateDbSelect(); app.addFromDB(); if (!app.inventory.length) throw new Error('inventario vacío'); });
     t('exportJSON genera datos válidos', () => { const d = app.gatherCharData(); JSON.parse(JSON.stringify(d)); if (!d.inputs) throw new Error('sin inputs'); });
