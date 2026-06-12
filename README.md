@@ -1,8 +1,19 @@
-# S&S Companion — v33
+# S&S Companion — v34
 
 Hoja de personaje digital (PWA) para **Stars & Sorcery RPG**. Esta versión reestructura el monolito original de 7.800 líneas en un proyecto modular, corrige el bug de *touch bleed-through* del diálogo de confirmación y completa las piezas PWA que faltaban. **Toda la funcionalidad original se conserva** (verificado con suite de pruebas automatizada).
 
 
+
+
+## Novedades v34 — Fix: resumen de "Equipo de Combate" rancio al cargar
+
+**Síntoma.** Tras abrir un personaje, la página *Ataques* y la vista de edición eran correctas, pero el resumen colapsado de **Equipo → Equipo de Combate** mostraba "Desarmado" en Principal y Secundaria, con el texto de ataque/daño de desarmado — mientras el chip de tirada de ese mismo resumen sí tenía los valores correctos.
+
+**Causa raíz (orden de carga en `applyCharData`).** `updateOptions()` ejecuta un `calc()` *antes* de restaurar los `<select>` (calcula "Desarmado"); luego se restauran los selects; luego `confirmSection('combat')` construye el resumen **con esos valores rancios**; y el `calc()` final corregía la edición, la página Ataques y los chips `sum_atk*` — pero `sum_wep*_name` y `sum_wep*_stats` solo se reescribían en `_buildCombatSummary`, que ya no volvía a ejecutarse.
+
+**Fix.** `calc()` ahora refresca también el resumen de combate (mismo patrón que ya usaba con Stats y Salvaciones): el resumen no puede volver a quedar desincronizado, sin importar el orden de carga. De paso esto corrige el mismo desfase en la armadura/escudo del resumen.
+
+Suite de humo: **27 pruebas**, todas en verde.
 
 ## Novedades v33 — Fix: arma equipada que decía "Desarmado"
 

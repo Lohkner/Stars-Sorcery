@@ -1193,6 +1193,12 @@ const app = {
     this._buildSavesSummary();
     // Stats live display
     this._buildStatsSummary();
+    // Resumen de Equipo de Combate (nombres y texto de ataque/daño).
+    // Sin esto, applyCharData lo construía vía confirmSection ANTES del
+    // recálculo final y quedaba rancio: el chip de tirada (sum_atk*) sí se
+    // actualizaba arriba, pero sum_wep*_name decía "Desarmado" y
+    // sum_wep*_stats mostraba los valores de desarmado tras cargar.
+    this._buildCombatSummary();
   },
 
   _calcWeapon(wid, uid, attr, dmgAttr, mods, prof, arq) {

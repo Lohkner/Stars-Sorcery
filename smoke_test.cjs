@@ -177,6 +177,22 @@ setTimeout(() => {
       if (document.getElementById('atk_name_1').textContent !== 'Espada')
         throw new Error('la selección guardada no resolvió al arma correcta');
     });
+    t('Resumen de Equipo de Combate coherente tras applyCharData (nombre + texto + chip)', () => {
+      const w = app.inventory.find(i => i.type === 'weapons' && (i.dbData || i.dbKey));
+      if (!w) throw new Error('sin arma con datos');
+      const data = app.gatherCharData();
+      data.selects.sel_weapon = String(w.uid);
+      data.selects.sel_weapon_sec = String(w.uid);
+      app.applyCharData(data);   // simula abrir el personaje (resumen colapsado)
+      const nm1 = document.getElementById('sum_wep1_name').textContent;
+      const nm2 = document.getElementById('sum_wep2_name').textContent;
+      if (nm1 === 'Desarmado' || nm2 === 'Desarmado')
+        throw new Error('resumen rancio: ' + nm1 + ' / ' + nm2);
+      const stats = document.getElementById('sum_wep1_stats').textContent;
+      const chip  = document.getElementById('sum_atk1_bonus').textContent + ' / ' + document.getElementById('sum_atk1_dmg').textContent;
+      if (!stats.includes(document.getElementById('sum_atk1_dmg').textContent))
+        throw new Error('texto y chip divergen: "' + stats + '" vs "' + chip + '"');
+    });
     t('_nextUid() es monotónico y sin colisiones', () => {
       const a = app._nextUid(), b = app._nextUid(), c = app._nextUid();
       if (new Set([a, b, c]).size !== 3) throw new Error('colisión de uids');
